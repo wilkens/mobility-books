@@ -1,15 +1,16 @@
 ############ Mobility Derived Data ############
 library(stringr)
 
-setwd("/Users/akpiper/Data")
+setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
+
+#load CONLIT metadata
 meta<-read.csv("CONLIT_META.csv")
 
 #read/write data
-setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
-c<-read.csv(gzfile("CONLIT_CharData_AP_5.csv.gz"))
+c<-read.csv(gzfile("CONLIT_CharData_AP_6.csv.gz"))
 
-write.csv(c, file="CONLIT_CharData_AP_6.csv")
-system("gzip CONLIT_CharData_AP_6.csv") 
+#write.csv(c, file="CONLIT_CharData_AP_6.csv", row.names = F)
+#system("gzip CONLIT_CharData_AP_6.csv") 
 
 ##### calculate measures on extracted data #######
 setwd("/Users/akpiper/Research/Mobility")
@@ -89,7 +90,26 @@ c$non_gpe_ratio<-c$num_nongpe_places/c$num_gpe_places
 #Deixis (There+Here Frequency)
 c$deixis_count_perplace<-str_count(c$nongpe_places, "'here'|'there'")/c$nongpe_places_total
 
-##### Semantic Distance Functions  #######
+#End Point Similarity
+#calculates the distance between the starting location and the final location and calculates a z score
+#for that distance (how many standard deviations above or below avg distance in the book is this distance)
+#this illustrates the relationship between distance and narrative closure in the sense of circularity
+
+for (i in 1:nrow(c)){
+  
+  #extract all place names
+  place.df<-splitElements(c$gpe_sequences[i])
+  
+  #get names of first and last
+  first<-place.df$Element[1]
+  last<-place.df$Element[nrow(place.df)]
+  
+  
+}
+
+
+
+######## Semantic Distance Functions  ##########
 
 #create function to extract all places in sequence
 splitElements <- function(input_column) {
@@ -256,4 +276,6 @@ for (i in 1:nrow(c)){
     semantic_dist_mean[i]<-0
   }
 }
+
+
 
