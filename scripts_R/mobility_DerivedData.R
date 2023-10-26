@@ -5,10 +5,21 @@ setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
 
 #load CONLIT metadata
 meta<-read.csv("CONLIT_META.csv")
+setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/metadata")
+meta<-read.csv("EARLY_META.tsv", sep="\t")
 
 #read/write data
-c<-read.csv(gzfile("CONLIT_CharData_AP_6.csv.gz"))
-#c<-read.csv(gzfile("EARLY_CharData_MW.csv.gz"))
+#c<-read.csv(gzfile("CONLIT_CharData_AP_6.csv.gz"))
+c<-read.csv(gzfile("EARLY_CharData_MW.csv.gz"))
+c<-c[order(c$book_id),]
+meta<-meta[order(meta$book_id),]
+meta<-meta[!duplicated(meta$book_id),]
+c<-c[c$book_id %in% meta$book_id,]
+which(c$book_id != meta$book_id)
+c<-cbind(meta$source, c)
+colnames(c)[1]<-c("collection")
+c<-cbind(meta$pub_date, c)
+colnames(c)[1]<-c("pub_date")
 
 #write.csv(c, file="CONLIT_CharData_AP_7.csv", row.names = F)
 #system("gzip CONLIT_CharData_AP_7.csv") 
@@ -58,8 +69,8 @@ c$nongpe_places_cleaned<-gsub("\\bhere\\b", "", c$nongpe_places_cleaned)
 c$nongpe_places_cleaned<-gsub("\\bit\\b", "", c$nongpe_places_cleaned)
 
 #calculate total distance per book
-c$dist_miles_allChars_norm_Tokens<-unname(tapply(b$dist_miles, b$book_id, sum))/c$Tokens
-c$num_gpe_places_allChars_norm_Tokens<-unname(tapply(b$num_gpe_places, b$book_id, sum))/c$Tokens
+#c$dist_miles_allChars_norm_Tokens<-unname(tapply(b$dist_miles, b$book_id, sum))/c$Tokens
+#c$num_gpe_places_allChars_norm_Tokens<-unname(tapply(b$num_gpe_places, b$book_id, sum))/c$Tokens
 
 #calculate Deixis (rate of here + there)
 
@@ -144,6 +155,7 @@ remove_words <- function(text_vector, remove) {
 
 #extract every place name and tabulate
 fic<-c[c$Category == "FIC",]
+fic<-c
 list_of_vectors <- lapply(fic$gpe_sequences, splitElements2)
 place.v<-unlist(list_of_vectors)
 top.v<-names(sort(table(place.v), decreasing = T)[1:5])
