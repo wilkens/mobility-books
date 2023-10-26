@@ -1,7 +1,6 @@
 ############ Mobility Derived Data ############
 library(stringr)
 
-setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
 
 #load CONLIT metadata
 meta<-read.csv("CONLIT_META.csv")
@@ -9,6 +8,7 @@ setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/metadata")
 meta<-read.csv("EARLY_META.tsv", sep="\t")
 
 #read/write data
+setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
 #c<-read.csv(gzfile("CONLIT_CharData_AP_6.csv.gz"))
 c<-read.csv(gzfile("EARLY_CharData_MW.csv.gz"))
 c<-c[order(c$book_id),]
@@ -21,8 +21,8 @@ colnames(c)[1]<-c("collection")
 c<-cbind(meta$pub_date, c)
 colnames(c)[1]<-c("pub_date")
 
-#write.csv(c, file="CONLIT_CharData_AP_7.csv", row.names = F)
-#system("gzip CONLIT_CharData_AP_7.csv") 
+write.csv(c, file="EARLY_CharData_02.csv", row.names = F)
+#system("gzip EARLY_CharData_02.csv") 
 
 ##### calculate measures on extracted data #######
 setwd("/Users/akpiper/Research/Mobility")
