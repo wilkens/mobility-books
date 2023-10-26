@@ -8,9 +8,10 @@ meta<-read.csv("CONLIT_META.csv")
 
 #read/write data
 c<-read.csv(gzfile("CONLIT_CharData_AP_6.csv.gz"))
+#c<-read.csv(gzfile("EARLY_CharData_MW.csv.gz"))
 
-#write.csv(c, file="CONLIT_CharData_AP_6.csv", row.names = F)
-#system("gzip CONLIT_CharData_AP_6.csv") 
+#write.csv(c, file="CONLIT_CharData_AP_7.csv", row.names = F)
+#system("gzip CONLIT_CharData_AP_7.csv") 
 
 ##### calculate measures on extracted data #######
 setwd("/Users/akpiper/Research/Mobility")
@@ -87,6 +88,24 @@ c$avg_Distance_GPE_Tokens<-c$dist_miles/c$Tokens
 #NON / GPE ratio
 c$non_gpe_ratio<-c$num_nongpe_places/c$num_gpe_places
 
+#rank by num_nonGPE & dist_miles normalized by tokens
+c<-c[order(c$nongpe_places_total/c$Tokens),]
+c$non_gpe_total_rank<-seq(1:nrow(c))
+
+#dist_miles
+c<-c[order(c$dist_miles/c$Tokens),]
+c$dist_miles_rank<-seq(1:nrow(c))
+#transform all 0 values into rank 1
+c$dist_miles_rank[c$dist_miles == 0] <- 1
+#reorder
+c<-c[order(c$book_id),]
+#reorder
+c<-c[order(c$dist_miles_rank, -c$non_gpe_total_rank),]
+#subset
+d<-c[c$Genre %in% c("PW", "BS", "NYT", "MY"),]
+d<-d[1:50,]
+write.csv(d, file="TopAdultFiction_NonGPE.csv", row.names = F)
+
 #Deixis (There+Here Frequency)
 c$deixis_count_perplace<-str_count(c$nongpe_places, "'here'|'there'")/c$nongpe_places_total
 
@@ -95,19 +114,88 @@ c$deixis_count_perplace<-str_count(c$nongpe_places, "'here'|'there'")/c$nongpe_p
 #for that distance (how many standard deviations above or below avg distance in the book is this distance)
 #this illustrates the relationship between distance and narrative closure in the sense of circularity
 
-for (i in 1:nrow(c)){
+##### Most frequent place calculations ######
+
+#create function to extract all places in sequence
+splitElements2 <- function(input_column) {
+  # Remove the square brackets at the beginning and end of each string in the column
+  cleaned_text <- gsub("^\\[|\\]$", "", input_column)
   
-  #extract all place names
-  place.df<-splitElements(c$gpe_sequences[i])
+  # Split each string into a list of elements based on ', ' and remove single quotes
+  elements_list <- lapply(strsplit(cleaned_text, "', '"), function(x) gsub("'", "", x))
   
-  #get names of first and last
-  first<-place.df$Element[1]
-  last<-place.df$Element[nrow(place.df)]
+  # Convert the list of elements into a data frame
+  result_df <- unlist(elements_list)
   
-  
+  return(result_df)
 }
 
+#function to remove stopwords
+remove_words <- function(text_vector, remove) {
+  # Construct a single regex pattern that matches any word in the remove vector
+  pattern <- paste0("\\b(", paste(remove, collapse="|"), ")\\b")
+  
+  # Replace matched words with empty string
+  cleaned_text <- gsub(pattern, "", text_vector)
+  
+  # Remove leading and trailing whitespace
+  return(trimws(cleaned_text))
+}
 
+#extract every place name and tabulate
+fic<-c[c$Category == "FIC",]
+list_of_vectors <- lapply(fic$gpe_sequences, splitElements2)
+place.v<-unlist(list_of_vectors)
+top.v<-names(sort(table(place.v), decreasing = T)[1:5])
+
+#for the most common place extract the next place in sequence
+#i.e. where do you go from New York?
+top.plus1.v<-vector(mode="character", length=length(top.v))
+for (i in 1:length(top.v)){
+  next.v<-place.v[(which(place.v == top.v[i])+1)]
+  top.plus1.v[i]<-paste(names(sort(table(next.v), decreasing = T)[1:5]), collapse = ",")
+}
+
+#create data frame
+df<-data.frame(top.v, top.plus1.v)
+colnames(df)<-c("Top Places", "Next Places")
+
+#repeat for nonGPEs
+library(tm)
+stop<-stopwords("en")
+stop<-unlist(strsplit(stop,"[[:punct:]]"))
+stop<-unique(stop)
+
+#extract vector of places
+list_of_vectors <- lapply(fic$nongpe_places_cleaned, splitElements2)
+places<-unlist(list_of_vectors)
+#clean
+places<-tolower(places)
+#remove punctuation
+places<-gsub("[[:punct:]]", "", places)
+#remove stopwords
+places<-remove_words(places, stop)
+#remove white spaces
+places<-gsub("\\s+", " ", places)
+#remove blanks
+places<-places[places != ""]
+#remove dupes in sequence
+places<-rle(places)$values
+#tabulate
+top.non<-names(sort(table(places), decreasing = T)[1:5])
+
+#for the most common place extract the next place in sequence
+#i.e. where do you go from New York?
+top.plus1.non<-vector(mode="character", length=length(top.non))
+for (i in 1:length(top.non)){
+  next.v<-places[(which(places == top.non[i])+1)]
+  top.plus1.non[i]<-paste(names(sort(table(next.v), decreasing = T)[1:5]), collapse = ",")
+}
+
+df2<-data.frame(top.non, top.plus1.non)
+colnames(df2)<-c("Top Places", "Next Places")
+
+df3<-cbind(df, df2)
 
 ######## Semantic Distance Functions  ##########
 
@@ -123,18 +211,6 @@ splitElements <- function(input_column) {
   result_df <- data.frame(Element = unlist(elements_list))
   
   return(result_df)
-}
-
-#function to remove stopwords
-remove_words <- function(text_vector, remove) {
-  # Construct a single regex pattern that matches any word in the remove vector
-  pattern <- paste0("\\b(", paste(remove, collapse="|"), ")\\b")
-  
-  # Replace matched words with empty string
-  cleaned_text <- gsub(pattern, "", text_vector)
-  
-  # Remove leading and trailing whitespace
-  return(trimws(cleaned_text))
 }
 
 #functions to compute distance of a route
