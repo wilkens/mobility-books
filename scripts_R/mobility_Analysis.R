@@ -1,16 +1,9 @@
 ##########  Mobility Data Analysis   ###########
 
 #read in derived data
-setwd("/Users/akpiper/Research/Mobility")
-
-c<-read.csv("CONLIT_CharData_AP_5.csv")
 
 setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
-c<-read.csv(gzfile("CONLIT_CharData_AP_5.csv.gz"))
-d<-read.csv(gzfile("CONLIT_CharData_AP_MW_5.csv.gz"))
-
-which(c$book_id != d$book_id)
-c$dist_miles<-d$dist_miles
+c<-read.csv(gzfile("CONLIT_CharData_AP_MW_7.csv.gz"))
 
 write.table(foo, file="/tmp/foo.csv")
 system("gzip /tmp/foo.csv") 
@@ -51,6 +44,17 @@ t.test(avg_Distance_GPE_Tokens ~ Category, data=c)
 wilcox.test(avg_Distance_GPE_Tokens ~ Category, data=c)
 boxplot(avg_Distance_GPE_Tokens ~ Category, data=c)
 summary(lm(avg_Distance_GPE_Tokens ~ Category+Genre, data=c))
+
+#First / Last semantic distance for GPEs
+summary(lm(first_last_SemanticDist ~ Category+Genre, data=c))
+fic<-c[c$Category == "FIC",]
+summary(lm(first_last_SemanticDist ~ Genre, data=fic))
+nrow(fic[fic$first_last_SemanticDist == 0,])/nrow(fic)
+fic0<-fic[fic$first_last_SemanticDist == 0,]
+table(fic0$Genre)
+df<-data.frame(table(fic0$Genre), table(fic$Genre))
+df<-df[,-3]
+chisq.test(df[,2:3])
 
 #type token ratio
 c.test<-c[-which(c$ttr_gpe == 0 | c$ttr_gpe == 1),]
