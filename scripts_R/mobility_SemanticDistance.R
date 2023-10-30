@@ -9,11 +9,23 @@
 #read data
 setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
 #c<-read.csv(gzfile("CONLIT_CharData_AP_6.csv.gz"))
-#c<-read.csv(gzfile("EARLY_CharData_MW.csv.gz"))
+#c<-read.csv(gzfile("EARLY_CharData_AP_MW_7.csv.gz"))
 
 #write data
-write.csv(c, file="EARLY_CharData_02.csv", row.names = F)
-system("gzip EARLY_CharData_02.csv") 
+write.csv(c, file="EARLY_CharData_AP_MW_8.csv", row.names = F)
+system("gzip EARLY_CharData_AP_MW_8.csv") 
+
+#remove words
+remove_words <- function(text_vector, remove) {
+  # Construct a single regex pattern that matches any word in the remove vector
+  pattern <- paste0("\\b(", paste(remove, collapse="|"), ")\\b")
+  
+  # Replace matched words with empty string
+  cleaned_text <- gsub(pattern, "", text_vector)
+  
+  # Remove leading and trailing whitespace
+  return(trimws(cleaned_text))
+}
 
 #create function to extract all places in sequence
 splitElements <- function(input_column) {
@@ -168,6 +180,10 @@ for (i in 1:nrow(c)){
     semantic_dist_mean[i]<-0
   }
 }
+
+c$semantic_dist_total<-semantic_dist_total
+c$semantic_dist_mean<-semantic_dist_mean
+
 
 ####### Calculate Semantic Distance between first and last GPE ###########
 library(word2vec)

@@ -9,8 +9,8 @@ meta<-read.csv("EARLY_META.tsv", sep="\t")
 
 #read/write data
 setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
-#c<-read.csv(gzfile("CONLIT_CharData_AP_6.csv.gz"))
-c<-read.csv(gzfile("EARLY_CharData_MW.csv.gz"))
+#c<-read.csv(gzfile("CONLIT_CharData_AP_MW_8.csv.gz"))
+c<-read.csv(gzfile("EARLY_CharData_AP_MW_7.csv.gz"))
 
 # c<-c[order(c$book_id),]
 # meta<-meta[order(meta$book_id),]
