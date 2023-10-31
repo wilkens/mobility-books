@@ -12,8 +12,8 @@ setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
 #c<-read.csv(gzfile("EARLY_CharData_AP_MW_7.csv.gz"))
 
 #write data
-write.csv(c, file="EARLY_CharData_AP_MW_8.csv", row.names = F)
-system("gzip EARLY_CharData_AP_MW_8.csv") 
+write.csv(c, file="EARLY_CharData_AP_MW_9.csv", row.names = F)
+system("gzip EARLY_CharData_AP_MW_9.csv") 
 
 #remove words
 remove_words <- function(text_vector, remove) {
@@ -285,6 +285,7 @@ for (i in 1:nrow(c)){
     first_last_SemanticDist[i]<-NA
   }
 }
+
 c$first_last_SemanticDist<-first_last_SemanticDist
 
 
