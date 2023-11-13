@@ -3,7 +3,7 @@
 #read in derived data
 
 setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
-c<-read.csv(gzfile("CONLIT_CharData_AP_MW_7.csv.gz"))
+c<-read.csv(gzfile("CONLIT_CharData_AP_MW_10.csv.gz"))
 
 write.table(foo, file="/tmp/foo.csv")
 system("gzip /tmp/foo.csv") 
