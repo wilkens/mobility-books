@@ -3,7 +3,7 @@
 #read in derived data
 
 setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
-c<-read.csv(gzfile("CONLIT_CharData_AP_MW_10.csv.gz"))
+c<-read.csv(gzfile("CONLIT_CharData_AP_MW_11.csv.gz"))
 
 write.table(foo, file="/tmp/foo.csv")
 system("gzip /tmp/foo.csv") 
@@ -17,33 +17,20 @@ boxplot(char_count_norm ~ Category, data=c)
 wilcox.test(char_count_norm ~ Category, data=c)
 summary(lm(char_count_norm ~ Category + Genre, data=c))
 
-#Number GPE per character mention
-hist(c$num_gpe_places_norm_byCharacter)
-t.test(num_gpe_places_norm_byCharacter ~ Category, data=c)
-wilcox.test(num_gpe_places_norm_byCharacter ~ Category, data=c)
-boxplot(num_gpe_places_norm_byCharacter ~ Category, data=c)
-summary(lm(num_gpe_places_norm_byCharacter ~ Category + Genre, data=c))
-
-#Number NonGPE per character mention
-hist(c$num_nongpe_places_norm_byCharacter)
-t.test(num_nongpe_places_norm_byCharacter ~ Category, data=c)
-wilcox.test(num_nongpe_places_norm_byCharacter ~ Category, data=c)
-boxplot(num_nongpe_places_norm_byCharacter ~ Category, data=c)
-summary(lm(num_nongpe_places_norm_byCharacter ~ Category + Genre, data=c))
-
 #Distance per GPE
 hist(c$avg_Distance_GPE)
-t.test(avg_Distance_GPE ~ Category, data=c)
-wilcox.test(avg_Distance_GPE ~ Category, data=c)
 boxplot(avg_Distance_GPE ~ Category, data=c)
 summary(lm(avg_Distance_GPE ~ Category+Genre, data=c))
 
 #Distance per token
 hist(c$avg_Distance_GPE_Tokens)
-t.test(avg_Distance_GPE_Tokens ~ Category, data=c)
-wilcox.test(avg_Distance_GPE_Tokens ~ Category, data=c)
-boxplot(avg_Distance_GPE_Tokens ~ Category, data=c)
 summary(lm(avg_Distance_GPE_Tokens ~ Category+Genre, data=c))
+
+#Number GPE per character mention
+summary(lm(num_gpe_places_norm_byCharacter ~ Category + Genre, data=c))
+
+#Number NonGPE per character mention
+summary(lm(num_nongpe_places_norm_byCharacter ~ Category + Genre, data=c))
 
 #First / Last semantic distance for GPEs
 summary(lm(first_last_SemanticDist ~ Category+Genre, data=c))
@@ -56,7 +43,7 @@ df<-data.frame(table(fic0$Genre), table(fic$Genre))
 df<-df[,-3]
 chisq.test(df[,2:3])
 
-#type token ratio
+#type token ratio GPE
 c.test<-c[-which(c$ttr_gpe == 0 | c$ttr_gpe == 1),]
 summary(lm(ttr_gpe ~ Category+Genre, data=c.test))
 
@@ -133,6 +120,159 @@ summary(lm(dist_miles_allChars_norm_Tokens ~ protagonist_concentration + Genre, 
 summary(lm(num_gpe_places_allChars_norm_Tokens ~ protagonist_concentration + Genre, data = fic))
 
 write.csv(fic, file="CONLIT_CharData_AP_FIC.csv", row.names = F)
+
+
+#### Make final table for paper #####
+
+#prepare all measures
+measures<-c("avg_Distance_GPE_Tokens", "avg_Distance_GPE", "num_gpe_places_norm_byCharacter",
+            "num_nongpe_places_norm_byCharacter", "deixis_count_perplace",
+            "semantic_dist_mean", "non_gpe_ratio")
+
+measure.names<-c("Distance_per_Token", "Distance_per_GPE", "GPE_per_Character",
+                 "nonGPE_per_Character", "Generics_per_nonGPE",
+                 "avg_semantic_distance", "nonGPE_GPE_Ratio")
+
+classes<-c("Fictionality", "Prestige", "Youth", "Female Character")
+
+#functions
+getr2<-function()
+
+final.df<-NULL
+  
+for (i in 1:length(classes)){
+  #Fictionality
+  if (classes[i] == classes[1]){
+    for (j in 1:(length(measures)-1)){
+      model<-summary(lm(get(measures[j]) ~ Category+Genre, data = c))
+      R2<-round(model$r.squared, 3)
+      co.df<-model$coefficients
+      p<-co.df[2,4]
+      p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
+      Estimate<-round(co.df[1,1], 3)
+      Difference<-round(-co.df[2,1], 3)
+      if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
+      Category<-classes[i]
+      Measure<-measure.names[j]
+      temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+      final.df<-rbind(final.df, temp.df)
+    }
+    c.test <- c[!is.infinite(c$non_gpe_ratio),]
+    model<-summary(lm(non_gpe_ratio ~ Category+Genre, data = c.test))
+    R2<-round(model$r.squared, 3)
+    co.df<-model$coefficients
+    p<-co.df[2,4]
+    p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
+    Estimate<-round(co.df[1,1], 3)
+    Difference<-round(-co.df[2,1], 3)
+    if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
+    Category<-classes[i]
+    Measure<-measure.names[j+1]
+    temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+    final.df<-rbind(final.df, temp.df)
+  }
+  
+  #Prestige
+  if (classes[i] %in% classes[2]){
+    d<-c[c$Genre %in% c("PW", "BS"),]
+    for (j in 1:(length(measures)-1)){
+      model<-summary(lm(get(measures[j]) ~ Genre, data = d))
+      R2<-round(model$r.squared, 3)
+      co.df<-model$coefficients
+      p<-co.df[2,4]
+      p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
+      Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
+      Difference<-round(co.df[2,1],3)
+      if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
+      Category<-classes[i]
+      Measure<-measure.names[j]
+      temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+      final.df<-rbind(final.df, temp.df)
+    }
+    d.test <- d[!is.infinite(d$non_gpe_ratio),]
+    model<-summary(lm(non_gpe_ratio ~ Genre, data = d.test))
+    R2<-round(model$r.squared, 3)
+    co.df<-model$coefficients
+    p<-co.df[2,4]
+    p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
+    Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
+    Difference<-round(co.df[2,1], 3)
+    if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
+    Category<-classes[i]
+    Measure<-measure.names[j+1]
+    temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+    final.df<-rbind(final.df, temp.df)
+  }
+  
+  #Youth
+  if (classes[i] %in% classes[3]){
+    d<-c[c$Genre %in% c("NYT", "BS", "PW", "MID"),]
+    d$Adult<- ifelse(d$Genre == "MID", "MID", "AD")
+    for (j in 1:(length(measures)-1)){
+      model<-summary(lm(get(measures[j]) ~ Adult, data = d))
+      R2<-round(model$r.squared, 3)
+      co.df<-model$coefficients
+      p<-co.df[2,4]
+      p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
+      Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
+      Difference<-round(co.df[2,1],3)
+      if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
+      Category<-classes[i]
+      Measure<-measure.names[j]
+      temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+      final.df<-rbind(final.df, temp.df)
+    }
+    d.test <- d[!is.infinite(d$non_gpe_ratio),]
+    model<-summary(lm(non_gpe_ratio ~ Adult, data = d.test))
+    R2<-round(model$r.squared, 3)
+    co.df<-model$coefficients
+    p<-co.df[2,4]
+    p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
+    Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
+    Difference<-round(co.df[2,1], 3)
+    if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
+    Category<-classes[i]
+    Measure<-measure.names[j+1]
+    temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+    final.df<-rbind(final.df, temp.df)
+  }
+  
+  #Female Character
+  if (classes[i] %in% classes[4]){
+    d<-c[c$Category == "FIC",]
+    d<-d[d$inf_gender %in% c("she/her", "he/him/his"),]
+    for (j in 1:(length(measures)-1)){
+      model<-summary(lm(get(measures[j]) ~ inf_gender+Genre, data = d))
+      R2<-round(model$r.squared, 3)
+      co.df<-model$coefficients
+      p<-co.df[2,4]
+      p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
+      Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
+      Difference<-round(co.df[2,1],3)
+      if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
+      Category<-classes[i]
+      Measure<-measure.names[j]
+      temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+      final.df<-rbind(final.df, temp.df)
+    }
+    d.test <- d[!is.infinite(d$non_gpe_ratio),]
+    model<-summary(lm(non_gpe_ratio ~ inf_gender+Genre, data = d.test))
+    R2<-round(model$r.squared, 3)
+    co.df<-model$coefficients
+    p<-co.df[2,4]
+    p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
+    Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
+    Difference<-round(co.df[2,1], 3)
+    if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
+    Category<-classes[i]
+    Measure<-measure.names[j+1]
+    temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+    final.df<-rbind(final.df, temp.df)
+  }
+}
+
+
+
 
 
 
