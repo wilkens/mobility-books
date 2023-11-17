@@ -5,10 +5,116 @@
 setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
 c<-read.csv(gzfile("CONLIT_CharData_AP_MW_11.csv.gz"))
 
-write.table(foo, file="/tmp/foo.csv")
-system("gzip /tmp/foo.csv") 
+#### Final table for paper #####
 
-###### Protagonist Only Statistics ######
+#measures
+measures<-c("avg_Distance_GPE_Tokens", "avg_Distance_GPE", "num_gpe_places_norm_byCharacter",
+            "num_nongpe_places_norm_byCharacter", "deixis_count_perplace",
+            "semantic_dist_mean")
+
+#more intuitive names used for measures
+measure.names<-c("Distance_per_Token", "Distance_per_GPE", "GPE_per_Character",
+                 "nonGPE_per_Character", "Generics_per_nonGPE",
+                 "avg_semantic_distance", "nonGPE_GPE_Ratio")
+
+#social classes we are analyzings
+classes<-c("Fictionality", "Prestige", "Youth", "Female Character")
+
+#regression functions
+perform_regression_opposite <- function(data, formula, category, measure_name) {
+  model <- summary(lm(formula, data = data))
+  R2 <- round(model$r.squared, 3)
+  co.df <- model$coefficients
+  p <- co.df[2,4]
+  p.code <- if (p < .001) {"***"} else if (p < 0.01) {"**"} else if (p < 0.05) {"*"} else {"."}
+  Estimate <- round(co.df[1,1], 3)
+  Difference <- round(-co.df[2,1], 3)
+  Valence <- if (Difference < 0) {"-"} else {"+"}
+  return(data.frame(Category = category, Measure = measure_name, Estimate, Difference, Valence, R2, p, p.code))
+}
+
+perform_regression_same <- function(data, formula, category, measure_name) {
+  model <- summary(lm(formula, data = data))
+  R2 <- round(model$r.squared, 3)
+  co.df <- model$coefficients
+  p <- co.df[2,4]
+  p.code <- if (p < .001) {"***"} else if (p < 0.01) {"**"} else if (p < 0.05) {"*"} else {"."}
+  Estimate <- round(co.df[1,1], 3) + round(co.df[2,1], 3)
+  Difference <- round(co.df[2,1], 3)
+  Valence <- if (Difference < 0) {"-"} else {"+"}
+  return(data.frame(Category = category, Measure = measure_name, Estimate, Difference, Valence, R2, p, p.code))
+}
+
+#run
+final.df<-NULL
+
+for (i in 1:length(classes)){
+  
+  #Fictionality
+  if (classes[i] == classes[1]){
+    #prepare data
+    class_data<-c
+    for (j in 1:length(measures)){
+      #run regression
+      temp.df<-perform_regression_opposite(class_data, as.formula(paste0(measures[j], " ~ Category+Genre")), classes[i], measure.names[j])
+      final.df<-rbind(final.df, temp.df)
+    }
+    #prepare data
+    class_data<-c[!is.infinite(c$non_gpe_ratio),]
+    temp.df<-perform_regression_opposite(class_data, as.formula(paste0("non_gpe_ratio", " ~ Category+Genre")), classes[i], "nonGPE_GPE_Ratio")
+    final.df<-rbind(final.df, temp.df)
+  }
+  
+  #Prestige
+  if (classes[i] == classes[2]){
+    #prepare data
+    class_data<-c[c$Genre %in% c("PW", "BS"),]
+    for (j in 1:length(measures)){
+      #run regression
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Genre")), classes[i], measure.names[j])
+      final.df<-rbind(final.df, temp.df)
+    }
+    #prepare data
+    class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Genre")), classes[i], "nonGPE_GPE_Ratio")
+    final.df<-rbind(final.df, temp.df)
+  }
+  
+  #Youth
+  if (classes[i] == classes[3]){
+    #prepare data
+    class_data<-c[c$Genre %in% c("NYT", "BS", "PW", "MID"),]
+    class_data$Adult<- ifelse(class_data$Genre == "MID", "MID", "AD")
+    for (j in 1:length(measures)){
+      #run regression
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Adult")), classes[i], measure.names[j])
+      final.df<-rbind(final.df, temp.df)
+    }
+    #prepare data
+    class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Adult")), classes[i], "nonGPE_GPE_Ratio")
+    final.df<-rbind(final.df, temp.df)
+  }
+  
+  #Female Character
+  if (classes[i] == classes[4]){
+    #prepare data
+    class_data<-c[c$Category == "FIC",]
+    class_data<-class_data[class_data$inf_gender %in% c("she/her", "he/him/his"),]
+    for (j in 1:length(measures)){
+      #run regression
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ inf_gender+Genre")), classes[i], measure.names[j])
+      final.df<-rbind(final.df, temp.df)
+    }
+    #prepare data
+    class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ inf_gender+Genre")), classes[i], "nonGPE_GPE_Ratio")
+    final.df<-rbind(final.df, temp.df)
+  }
+}
+
+
+###### Individual Analyses ######
 
 #Character Count per token
 hist(c$char_count_norm)
@@ -119,113 +225,9 @@ summary(lm(avg_Distance_GPE ~ protagonist_concentration + Genre, data = fic))
 summary(lm(dist_miles_allChars_norm_Tokens ~ protagonist_concentration + Genre, data = fic))
 summary(lm(num_gpe_places_allChars_norm_Tokens ~ protagonist_concentration + Genre, data = fic))
 
-write.csv(fic, file="CONLIT_CharData_AP_FIC.csv", row.names = F)
 
 
-#### Make final table for paper #####
 
-#prepare all measures
-measures<-c("avg_Distance_GPE_Tokens", "avg_Distance_GPE", "num_gpe_places_norm_byCharacter",
-            "num_nongpe_places_norm_byCharacter", "deixis_count_perplace",
-            "semantic_dist_mean")
-
-measure.names<-c("Distance_per_Token", "Distance_per_GPE", "GPE_per_Character",
-                 "nonGPE_per_Character", "Generics_per_nonGPE",
-                 "avg_semantic_distance", "nonGPE_GPE_Ratio")
-
-classes<-c("Fictionality", "Prestige", "Youth", "Female Character")
-
-perform_regression_opposite <- function(data, formula, category, measure_name) {
-  model <- summary(lm(formula, data = data))
-  R2 <- round(model$r.squared, 3)
-  co.df <- model$coefficients
-  p <- co.df[2,4]
-  p.code <- if (p < .001) {"***"} else if (p < 0.01) {"**"} else if (p < 0.05) {"*"} else {"."}
-  Estimate <- round(co.df[1,1], 3)
-  Difference <- round(-co.df[2,1], 3)
-  Valence <- if (Difference < 0) {"-"} else {"+"}
-  return(data.frame(Category = category, Measure = measure_name, Estimate, Difference, Valence, R2, p, p.code))
-}
-
-perform_regression_same <- function(data, formula, category, measure_name) {
-  model <- summary(lm(formula, data = data))
-  R2 <- round(model$r.squared, 3)
-  co.df <- model$coefficients
-  p <- co.df[2,4]
-  p.code <- if (p < .001) {"***"} else if (p < 0.01) {"**"} else if (p < 0.05) {"*"} else {"."}
-  Estimate <- round(co.df[1,1], 3) + round(co.df[2,1], 3)
-  Difference <- round(co.df[2,1], 3)
-  Valence <- if (Difference < 0) {"-"} else {"+"}
-  return(data.frame(Category = category, Measure = measure_name, Estimate, Difference, Valence, R2, p, p.code))
-}
-
-
-final.df<-NULL
-  
-for (i in 1:length(classes)){
-  
-  #Fictionality
-  if (classes[i] == classes[1]){
-    #prepare data
-    class_data<-c
-    for (j in 1:length(measures)){
-      #run regression
-      temp.df<-perform_regression_opposite(class_data, as.formula(paste0(measures[j], " ~ Category+Genre")), classes[i], measure.names[j])
-      final.df<-rbind(final.df, temp.df)
-    }
-    #prepare data
-    class_data<-c[!is.infinite(c$non_gpe_ratio),]
-    temp.df<-perform_regression_opposite(class_data, as.formula(paste0("non_gpe_ratio", " ~ Category+Genre")), classes[i], "nonGPE_GPE_Ratio")
-    final.df<-rbind(final.df, temp.df)
-  }
-  
-  #Prestige
-  if (classes[i] == classes[2]){
-    #prepare data
-    class_data<-c[c$Genre %in% c("PW", "BS"),]
-    for (j in 1:length(measures)){
-      #run regression
-      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Genre")), classes[i], measure.names[j])
-      final.df<-rbind(final.df, temp.df)
-    }
-    #prepare data
-    class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
-    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Genre")), classes[i], "nonGPE_GPE_Ratio")
-    final.df<-rbind(final.df, temp.df)
-  }
-  
-  #Youth
-  if (classes[i] == classes[3]){
-    #prepare data
-    class_data<-c[c$Genre %in% c("NYT", "BS", "PW", "MID"),]
-    class_data$Adult<- ifelse(class_data$Genre == "MID", "MID", "AD")
-    for (j in 1:length(measures)){
-      #run regression
-      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Adult")), classes[i], measure.names[j])
-      final.df<-rbind(final.df, temp.df)
-    }
-    #prepare data
-    class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
-    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Adult")), classes[i], "nonGPE_GPE_Ratio")
-    final.df<-rbind(final.df, temp.df)
-  }
-  
-  #Female Character
-  if (classes[i] == classes[4]){
-    #prepare data
-    class_data<-c[c$Category == "FIC",]
-    class_data<-class_data[class_data$inf_gender %in% c("she/her", "he/him/his"),]
-    for (j in 1:length(measures)){
-      #run regression
-      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ inf_gender+Genre")), classes[i], measure.names[j])
-      final.df<-rbind(final.df, temp.df)
-    }
-    #prepare data
-    class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
-    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ inf_gender+Genre")), classes[i], "nonGPE_GPE_Ratio")
-    final.df<-rbind(final.df, temp.df)
-  }
-}
 
 
 
