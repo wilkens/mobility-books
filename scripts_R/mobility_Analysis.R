@@ -127,7 +127,7 @@ write.csv(fic, file="CONLIT_CharData_AP_FIC.csv", row.names = F)
 #prepare all measures
 measures<-c("avg_Distance_GPE_Tokens", "avg_Distance_GPE", "num_gpe_places_norm_byCharacter",
             "num_nongpe_places_norm_byCharacter", "deixis_count_perplace",
-            "semantic_dist_mean", "non_gpe_ratio")
+            "semantic_dist_mean")
 
 measure.names<-c("Distance_per_Token", "Distance_per_GPE", "GPE_per_Character",
                  "nonGPE_per_Character", "Generics_per_nonGPE",
@@ -135,138 +135,94 @@ measure.names<-c("Distance_per_Token", "Distance_per_GPE", "GPE_per_Character",
 
 classes<-c("Fictionality", "Prestige", "Youth", "Female Character")
 
-#functions
-getr2<-function()
+perform_regression_opposite <- function(data, formula, category, measure_name) {
+  model <- summary(lm(formula, data = data))
+  R2 <- round(model$r.squared, 3)
+  co.df <- model$coefficients
+  p <- co.df[2,4]
+  p.code <- if (p < .001) {"***"} else if (p < 0.01) {"**"} else if (p < 0.05) {"*"} else {"."}
+  Estimate <- round(co.df[1,1], 3)
+  Difference <- round(-co.df[2,1], 3)
+  Valence <- if (Difference < 0) {"-"} else {"+"}
+  return(data.frame(Category = category, Measure = measure_name, Estimate, Difference, Valence, R2, p, p.code))
+}
+
+perform_regression_same <- function(data, formula, category, measure_name) {
+  model <- summary(lm(formula, data = data))
+  R2 <- round(model$r.squared, 3)
+  co.df <- model$coefficients
+  p <- co.df[2,4]
+  p.code <- if (p < .001) {"***"} else if (p < 0.01) {"**"} else if (p < 0.05) {"*"} else {"."}
+  Estimate <- round(co.df[1,1], 3) + round(co.df[2,1], 3)
+  Difference <- round(co.df[2,1], 3)
+  Valence <- if (Difference < 0) {"-"} else {"+"}
+  return(data.frame(Category = category, Measure = measure_name, Estimate, Difference, Valence, R2, p, p.code))
+}
+
 
 final.df<-NULL
   
 for (i in 1:length(classes)){
+  
   #Fictionality
   if (classes[i] == classes[1]){
-    for (j in 1:(length(measures)-1)){
-      model<-summary(lm(get(measures[j]) ~ Category+Genre, data = c))
-      R2<-round(model$r.squared, 3)
-      co.df<-model$coefficients
-      p<-co.df[2,4]
-      p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
-      Estimate<-round(co.df[1,1], 3)
-      Difference<-round(-co.df[2,1], 3)
-      if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
-      Category<-classes[i]
-      Measure<-measure.names[j]
-      temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+    #prepare data
+    class_data<-c
+    for (j in 1:length(measures)){
+      #run regression
+      temp.df<-perform_regression_opposite(class_data, as.formula(paste0(measures[j], " ~ Category+Genre")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
-    c.test <- c[!is.infinite(c$non_gpe_ratio),]
-    model<-summary(lm(non_gpe_ratio ~ Category+Genre, data = c.test))
-    R2<-round(model$r.squared, 3)
-    co.df<-model$coefficients
-    p<-co.df[2,4]
-    p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
-    Estimate<-round(co.df[1,1], 3)
-    Difference<-round(-co.df[2,1], 3)
-    if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
-    Category<-classes[i]
-    Measure<-measure.names[j+1]
-    temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+    #prepare data
+    class_data<-c[!is.infinite(c$non_gpe_ratio),]
+    temp.df<-perform_regression_opposite(class_data, as.formula(paste0("non_gpe_ratio", " ~ Category+Genre")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
   
   #Prestige
-  if (classes[i] %in% classes[2]){
-    d<-c[c$Genre %in% c("PW", "BS"),]
-    for (j in 1:(length(measures)-1)){
-      model<-summary(lm(get(measures[j]) ~ Genre, data = d))
-      R2<-round(model$r.squared, 3)
-      co.df<-model$coefficients
-      p<-co.df[2,4]
-      p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
-      Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
-      Difference<-round(co.df[2,1],3)
-      if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
-      Category<-classes[i]
-      Measure<-measure.names[j]
-      temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+  if (classes[i] == classes[2]){
+    #prepare data
+    class_data<-c[c$Genre %in% c("PW", "BS"),]
+    for (j in 1:length(measures)){
+      #run regression
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Genre")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
-    d.test <- d[!is.infinite(d$non_gpe_ratio),]
-    model<-summary(lm(non_gpe_ratio ~ Genre, data = d.test))
-    R2<-round(model$r.squared, 3)
-    co.df<-model$coefficients
-    p<-co.df[2,4]
-    p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
-    Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
-    Difference<-round(co.df[2,1], 3)
-    if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
-    Category<-classes[i]
-    Measure<-measure.names[j+1]
-    temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+    #prepare data
+    class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Genre")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
   
   #Youth
-  if (classes[i] %in% classes[3]){
-    d<-c[c$Genre %in% c("NYT", "BS", "PW", "MID"),]
-    d$Adult<- ifelse(d$Genre == "MID", "MID", "AD")
-    for (j in 1:(length(measures)-1)){
-      model<-summary(lm(get(measures[j]) ~ Adult, data = d))
-      R2<-round(model$r.squared, 3)
-      co.df<-model$coefficients
-      p<-co.df[2,4]
-      p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
-      Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
-      Difference<-round(co.df[2,1],3)
-      if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
-      Category<-classes[i]
-      Measure<-measure.names[j]
-      temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+  if (classes[i] == classes[3]){
+    #prepare data
+    class_data<-c[c$Genre %in% c("NYT", "BS", "PW", "MID"),]
+    class_data$Adult<- ifelse(class_data$Genre == "MID", "MID", "AD")
+    for (j in 1:length(measures)){
+      #run regression
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Adult")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
-    d.test <- d[!is.infinite(d$non_gpe_ratio),]
-    model<-summary(lm(non_gpe_ratio ~ Adult, data = d.test))
-    R2<-round(model$r.squared, 3)
-    co.df<-model$coefficients
-    p<-co.df[2,4]
-    p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
-    Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
-    Difference<-round(co.df[2,1], 3)
-    if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
-    Category<-classes[i]
-    Measure<-measure.names[j+1]
-    temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+    #prepare data
+    class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Adult")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
   
   #Female Character
-  if (classes[i] %in% classes[4]){
-    d<-c[c$Category == "FIC",]
-    d<-d[d$inf_gender %in% c("she/her", "he/him/his"),]
-    for (j in 1:(length(measures)-1)){
-      model<-summary(lm(get(measures[j]) ~ inf_gender+Genre, data = d))
-      R2<-round(model$r.squared, 3)
-      co.df<-model$coefficients
-      p<-co.df[2,4]
-      p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
-      Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
-      Difference<-round(co.df[2,1],3)
-      if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
-      Category<-classes[i]
-      Measure<-measure.names[j]
-      temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+  if (classes[i] == classes[4]){
+    #prepare data
+    class_data<-c[c$Category == "FIC",]
+    class_data<-class_data[class_data$inf_gender %in% c("she/her", "he/him/his"),]
+    for (j in 1:length(measures)){
+      #run regression
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ inf_gender+Genre")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
-    d.test <- d[!is.infinite(d$non_gpe_ratio),]
-    model<-summary(lm(non_gpe_ratio ~ inf_gender+Genre, data = d.test))
-    R2<-round(model$r.squared, 3)
-    co.df<-model$coefficients
-    p<-co.df[2,4]
-    p.code<-if(p<.001){p.code<-c("***")} else if(p<0.01 & p>.001){p.code<-c("**")}else if(p<0.05 & p>.01){p.code<-c("*")}else{p.code<-"."}
-    Estimate<-round(co.df[1,1], 3)+round(co.df[2,1], 3)
-    Difference<-round(co.df[2,1], 3)
-    if(Difference < 0){Valence<-c("-")}else{Valence<-c("+")}
-    Category<-classes[i]
-    Measure<-measure.names[j+1]
-    temp.df<-data.frame(Category, Measure, Estimate, Difference, Valence, R2, p, p.code)
+    #prepare data
+    class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ inf_gender+Genre")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
 }
