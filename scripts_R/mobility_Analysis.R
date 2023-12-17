@@ -8,42 +8,62 @@ c<-read.csv(gzfile("CONLIT_CharData_AP_MW_11.csv.gz"))
 #### Final table for paper #####
 
 #measures
-measures<-c("avg_Distance_GPE_Tokens", "avg_Distance_GPE", "num_gpe_places_norm_byCharacter",
-            "num_nongpe_places_norm_byCharacter", "deixis_count_perplace",
-            "semantic_dist_mean")
+# measures<-c("avg_Distance_GPE_Tokens", "avg_Distance_GPE", "num_gpe_places_norm_byCharacter",
+#             "num_nongpe_places_norm_byCharacter", "num_gpe_places_norm", "num_nongpe_places_norm",
+#             "deixis_count_perplace", "semantic_dist_mean")
+# 
+# #more intuitive names used for measures
+# measure.names<-c("Distance_per_Token", "Distance_per_GPE", "GPE_per_Character",
+#                  "nonGPE_per_Character", "GPE_per_Token", "nonGPE_per_Token",
+#                  "Generics_per_nonGPE","avg_semantic_distance", "nonGPE_GPE_Ratio")
+
+#variables
+measures<-c("dist_miles", "gpe_places_total", "nongpe_places_total",
+            "deixis_count_perplace", "semantic_dist_mean")
 
 #more intuitive names used for measures
-measure.names<-c("Distance_per_Token", "Distance_per_GPE", "GPE_per_Character",
-                 "nonGPE_per_Character", "Generics_per_nonGPE",
-                 "avg_semantic_distance", "nonGPE_GPE_Ratio")
+measure.names<-c("Distance", "GPEs", "NonGPEs",
+                 "Deictics","Semantic Dist", "NON_GPE Ratio")
 
 #social classes we are analyzings
 classes<-c("Fictionality", "Prestige", "Youth", "Female Character")
 
 #regression functions
-perform_regression_opposite <- function(data, formula, category, measure_name) {
+perform_regression_opposite <- function(data, formula, formula2, category, measure_name) {
   model <- summary(lm(formula, data = data))
   R2 <- round(model$r.squared, 3)
   co.df <- model$coefficients
-  p <- co.df[2,4]
+  p <- round(co.df[2,4], 5)
   p.code <- if (p < .001) {"***"} else if (p < 0.01) {"**"} else if (p < 0.05) {"*"} else {"."}
-  Estimate <- round(co.df[1,1], 3)
-  Difference <- round(-co.df[2,1], 3)
+  model2<-t.test(formula2, data=data)
+  Mean.Group1<-round(model2$estimate[[1]],3)
+  Mean.Group2<-round(model2$estimate[[2]], 3)
+  #Estimate_Actual<-co.df[1,1]
+  #Difference_Actual<--co.df[2,1]
+  #Estimate <- round(co.df[1,1], 3)
+  Difference <- -co.df[2,1]
   Valence <- if (Difference < 0) {"-"} else {"+"}
-  return(data.frame(Category = category, Measure = measure_name, Estimate, Difference, Valence, R2, p, p.code))
+  return(data.frame(Category = category, Measure = measure_name, Mean.Group1, Mean.Group2, Valence, R2, p, p.code))
 }
 
-perform_regression_same <- function(data, formula, category, measure_name) {
+perform_regression_same <- function(data, formula, formula2, category, measure_name) {
   model <- summary(lm(formula, data = data))
   R2 <- round(model$r.squared, 3)
   co.df <- model$coefficients
-  p <- co.df[2,4]
+  p <- round(co.df[2,4], 5)
   p.code <- if (p < .001) {"***"} else if (p < 0.01) {"**"} else if (p < 0.05) {"*"} else {"."}
-  Estimate <- round(co.df[1,1], 3) + round(co.df[2,1], 3)
-  Difference <- round(co.df[2,1], 3)
+  #Estimate <- round(co.df[1,1], 3) + round(co.df[2,1], 3)
+  Difference <- co.df[2,1]
+  model2<-t.test(formula2, data=data)
+  Mean.Group1<-round(model2$estimate[[2]], 3)
+  Mean.Group2<-round(model2$estimate[[1]], 3)
+  #Difference<-Estimate.Group1-Estimate.Group2
   Valence <- if (Difference < 0) {"-"} else {"+"}
-  return(data.frame(Category = category, Measure = measure_name, Estimate, Difference, Valence, R2, p, p.code))
+  return(data.frame(Category = category, Measure = measure_name, Mean.Group1, Mean.Group2, Valence, R2, p, p.code))
 }
+
+#no scientific notation
+options(scipen = 999)
 
 #run
 final.df<-NULL
@@ -56,12 +76,12 @@ for (i in 1:length(classes)){
     class_data<-c
     for (j in 1:length(measures)){
       #run regression
-      temp.df<-perform_regression_opposite(class_data, as.formula(paste0(measures[j], " ~ Category+Genre")), classes[i], measure.names[j])
+      temp.df<-perform_regression_opposite(class_data, as.formula(paste0(measures[j], " ~ Category+Genre+Tokens+char_count")), as.formula(paste0(measures[j], " ~ Category")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
     #prepare data
     class_data<-c[!is.infinite(c$non_gpe_ratio),]
-    temp.df<-perform_regression_opposite(class_data, as.formula(paste0("non_gpe_ratio", " ~ Category+Genre")), classes[i], "nonGPE_GPE_Ratio")
+    temp.df<-perform_regression_opposite(class_data, as.formula(paste0("non_gpe_ratio", " ~ Category+Genre+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ Category")),classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
   
@@ -71,12 +91,12 @@ for (i in 1:length(classes)){
     class_data<-c[c$Genre %in% c("PW", "BS"),]
     for (j in 1:length(measures)){
       #run regression
-      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Genre")), classes[i], measure.names[j])
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Genre+Tokens+char_count")), as.formula(paste0(measures[j], " ~ Genre")),classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
     #prepare data
     class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
-    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Genre")), classes[i], "nonGPE_GPE_Ratio")
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Genre+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ Genre")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
   
@@ -87,12 +107,12 @@ for (i in 1:length(classes)){
     class_data$Adult<- ifelse(class_data$Genre == "MID", "MID", "AD")
     for (j in 1:length(measures)){
       #run regression
-      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Adult")), classes[i], measure.names[j])
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Adult+Tokens+char_count")), as.formula(paste0(measures[j], " ~ Adult")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
     #prepare data
     class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
-    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Adult")), classes[i], "nonGPE_GPE_Ratio")
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Adult+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ Adult")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
   
@@ -103,12 +123,12 @@ for (i in 1:length(classes)){
     class_data<-class_data[class_data$inf_gender %in% c("she/her", "he/him/his"),]
     for (j in 1:length(measures)){
       #run regression
-      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ inf_gender+Genre")), classes[i], measure.names[j])
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ inf_gender+Genre+Tokens+char_count")), as.formula(paste0(measures[j], " ~ inf_gender")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
     #prepare data
     class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
-    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ inf_gender+Genre")), classes[i], "nonGPE_GPE_Ratio")
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ inf_gender+Genre+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ inf_gender")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
 }
@@ -131,12 +151,20 @@ summary(lm(avg_Distance_GPE ~ Category+Genre, data=c))
 #Distance per token
 hist(c$avg_Distance_GPE_Tokens)
 summary(lm(avg_Distance_GPE_Tokens ~ Category+Genre, data=c))
+summary(lm(dist_miles ~ Category+Genre+Tokens+char_count, data=c))
 
 #Number GPE per character mention
 summary(lm(num_gpe_places_norm_byCharacter ~ Category + Genre, data=c))
 
 #Number NonGPE per character mention
 summary(lm(num_nongpe_places_norm_byCharacter ~ Category + Genre, data=c))
+
+#Number GPE per token
+summary(lm(num_gpe_places ~ Category + Genre + Tokens + char_count, data=c))
+
+#Number NonGPE per token
+summary(lm(num_nongpe_places ~ Category + Genre + Tokens + char_count, data=c))
+
 
 #First / Last semantic distance for GPEs
 summary(lm(first_last_SemanticDist ~ Category+Genre, data=c))
@@ -173,15 +201,34 @@ c.fic<-c.test[c.test$Category == "FIC",]
 c.fic.adult<-c.fic[!c.fic$Genre %in% c("MID", "YA"),]
 summary(lm(avg_Distance_GPE ~ inf_gender + Category+Genre, data=c.test))
 summary(lm(avg_Distance_GPE_Tokens ~ inf_gender + Category+Genre, data=c.test))
+summary(lm(avg_Distance_GPE_Tokens ~ inf_gender + Genre, data=c.fic.adult))
+
 summary(lm(dist_miles ~ inf_gender + Category+Genre, data=c.test))
 summary(lm(dist_miles ~ inf_gender + Genre, data=c.fic.adult))
+t.test(avg_Distance_GPE_Tokens ~ inf_gender, data=c.fic.adult)
+t.test(avg_Distance_GPE_Tokens ~ inf_gender, data=c.fic)
+wilcox.test(avg_Distance_GPE_Tokens ~ inf_gender, data=c.fic.adult)
+median(c.fic.adult$avg_Distance_GPE_Tokens[c.fic.adult$inf_gender == "he/him/his"])
+median(c.fic.adult$avg_Distance_GPE_Tokens[c.fic.adult$inf_gender == "she/her"])
+hist(c.fic.adult$avg_Distance_GPE_Tokens)
+t.test(avg_Distance_GPE ~ inf_gender, data=c.fic.adult)
+wilcox.test(avg_Distance_GPE ~ inf_gender, data=c.fic.adult)
+t.test(num_gpe_places_norm_byCharacter ~ inf_gender, data=c.fic.adult)
+wilcox.test(num_gpe_places_norm_byCharacter ~ inf_gender, data=c.fic.adult)
+#remove romance
+c.fic.adult2<-c.fic.adult[c.fic.adult$Genre != "ROM",]
+t.test(avg_Distance_GPE_Tokens ~ inf_gender, data=c.fic.adult2)
+wilcox.test(avg_Distance_GPE_Tokens ~ inf_gender, data=c.fic.adult2)
 
-#physical distance by genre
-model <- aov(avg_Distance_GPE_Tokens ~ Genre, data = c)
+#physical distance by genre controlling for gender
+c.fic.adult.she<-c.fic.adult[c.fic.adult$inf_gender == "she/her",]
+model <- aov(avg_Distance_GPE_Tokens ~ Genre, data = c.fic.adult.she)
 tukey_result <- TukeyHSD(model)
-plot(tukey_result)
+plot(tukey_result, las=2)
 sort(tapply(c$avg_Distance_GPE_Tokens, c$Genre, median))
 sort(tapply(c$avg_Distance_GPE, c$Genre, median))
+plot(avg_Distance_GPE_Tokens ~ factor(Genre), data = c.fic.adult.she)
+plot(avg_Distance_GPE_Tokens ~ factor(Genre), data = c.fic.adult)
 
 #semantic distance by genre
 sort(tapply(c$semantic_dist_mean, c$Genre, median))
