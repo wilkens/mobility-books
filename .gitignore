@@ -134,3 +134,7 @@ data/derived/.DS_Store
 data/metadata/.DS_Store
 .DS_Store
 .DS_Store
+
+#AP
+.Rhistory
+data/derived/.Rhistory
