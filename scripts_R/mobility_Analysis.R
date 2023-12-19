@@ -3,7 +3,8 @@
 #read in derived data
 
 setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
-c<-read.csv(gzfile("CONLIT_CharData_AP_MW_11.csv.gz"))
+a<-read.csv(gzfile("ALL_CharData_AP_MW_11.csv.gz"))
+c<-a[a$collection == "conlit",]
 
 #### Final table for paper #####
 
@@ -76,12 +77,12 @@ for (i in 1:length(classes)){
     class_data<-c
     for (j in 1:length(measures)){
       #run regression
-      temp.df<-perform_regression_opposite(class_data, as.formula(paste0(measures[j], " ~ Category+Genre+Tokens+char_count")), as.formula(paste0(measures[j], " ~ Category")), classes[i], measure.names[j])
+      temp.df<-perform_regression_opposite(class_data, as.formula(paste0(measures[j], " ~ Category+Genre+perspective+Tokens+char_count")), as.formula(paste0(measures[j], " ~ Category")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
     #prepare data
     class_data<-c[!is.infinite(c$non_gpe_ratio),]
-    temp.df<-perform_regression_opposite(class_data, as.formula(paste0("non_gpe_ratio", " ~ Category+Genre+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ Category")),classes[i], "nonGPE_GPE_Ratio")
+    temp.df<-perform_regression_opposite(class_data, as.formula(paste0("non_gpe_ratio", " ~ Category+Genre+perspective+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ Category")),classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
   
@@ -91,12 +92,12 @@ for (i in 1:length(classes)){
     class_data<-c[c$Genre %in% c("PW", "BS"),]
     for (j in 1:length(measures)){
       #run regression
-      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Genre+Tokens+char_count")), as.formula(paste0(measures[j], " ~ Genre")),classes[i], measure.names[j])
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Genre+perspective+Tokens+char_count")), as.formula(paste0(measures[j], " ~ Genre")),classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
     #prepare data
     class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
-    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Genre+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ Genre")), classes[i], "nonGPE_GPE_Ratio")
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Genre+perspective+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ Genre")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
   
@@ -107,12 +108,12 @@ for (i in 1:length(classes)){
     class_data$Adult<- ifelse(class_data$Genre == "MID", "MID", "AD")
     for (j in 1:length(measures)){
       #run regression
-      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Adult+Tokens+char_count")), as.formula(paste0(measures[j], " ~ Adult")), classes[i], measure.names[j])
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ Adult+perspective+Tokens+char_count")), as.formula(paste0(measures[j], " ~ Adult")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
     #prepare data
     class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
-    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Adult+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ Adult")), classes[i], "nonGPE_GPE_Ratio")
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ Adult+perspective+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ Adult")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
   
@@ -120,18 +121,66 @@ for (i in 1:length(classes)){
   if (classes[i] == classes[4]){
     #prepare data
     class_data<-c[c$Category == "FIC",]
-    class_data<-class_data[class_data$inf_gender %in% c("she/her", "he/him/his"),]
+    class_data<-class_data[class_data$inf_gender %in% c("she/her/hers", "he/him/his"),]
     for (j in 1:length(measures)){
       #run regression
-      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ inf_gender+Genre+Tokens+char_count")), as.formula(paste0(measures[j], " ~ inf_gender")), classes[i], measure.names[j])
+      temp.df<-perform_regression_same(class_data, as.formula(paste0(measures[j], " ~ inf_gender+Genre+perspective+Tokens+char_count")), as.formula(paste0(measures[j], " ~ inf_gender")), classes[i], measure.names[j])
       final.df<-rbind(final.df, temp.df)
     }
     #prepare data
     class_data<-class_data[!is.infinite(class_data$non_gpe_ratio),]
-    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ inf_gender+Genre+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ inf_gender")), classes[i], "nonGPE_GPE_Ratio")
+    temp.df<-perform_regression_same(class_data, as.formula(paste0("non_gpe_ratio", " ~ inf_gender+Genre+perspective+Tokens+char_count")), as.formula(paste0("non_gpe_ratio", " ~ inf_gender")), classes[i], "nonGPE_GPE_Ratio")
     final.df<-rbind(final.df, temp.df)
   }
 }
+
+###### Start Finish Comparison ######
+
+#Number 0 values (start = finish)
+x<-nrow(c[c$Start_Finish_Miles == 0 & c$Category == "FIC",])
+y<-nrow(c[c$Category == "FIC",])
+m<-nrow(c[c$Start_Finish_Miles == 0 & c$Category == "NON",])
+n<-nrow(c[c$Category == "NON",])
+chisq.test(data.frame(c(x,y), c(m,n)))
+
+#compare start finish difference
+summary(lm(Start_Finish_Miles ~ Category+Genre+perspective+Tokens+char_count, data=c))
+summary(lm(Start_Finish_Z ~ Category+Genre+perspective+Tokens+char_count, data=c))
+summary(lm(first_last_SemanticDist ~ Category+Genre+perspective+Tokens+char_count, data=c))
+
+#############  Historical Data   #############
+b<-a[a$collection != "conlit",]
+
+#make yearly table
+time.df<-NULL
+for (i in 1:nlevels(factor(b$pub_date))){
+  sub<-b[b$pub_date == levels(factor(b$pub_date))[i],]
+  pub_date<-sub$pub_date[1]
+  distance<-mean(sub$dist_miles, ra.rm=T)
+  dist_norm_Tokens<-mean(sub$dist_miles_norm, na.rm=T)
+  dist_norm_Characters<-mean(sub$dist_miles_norm_byCharacter, na.rm=T)
+  GPEs<-mean(sub$num_gpe_places, na.rm=T)
+  GPEs_norm_Tokens<-mean(sub$num_gpe_places_norm, na.rm=T)
+  GPEs_norm_Character<-mean(sub$num_gpe_places_norm_byCharacter, na.rm=T)
+  temp.df<-data.frame(pub_date, distance, GPEs, dist_norm_Tokens, dist_norm_Characters, GPEs_norm_Tokens, GPEs_norm_Character)
+  time.df<-rbind(time.df, temp.df)
+}
+
+library(ggplot2)
+ggplot(time.df, aes(x=pub_date, y=GPEs_norm_Character)) +
+  geom_point() +
+  theme_classic() + 
+  xlab("Year") +
+  ylab("Distance (Miles)") +
+  theme(legend.title = element_blank()) +
+  #theme(legend.position = c(0.8, 0.2)) +
+  theme(legend.text = element_text(size=12))+
+  #theme(legend.position="bottom") +
+  #ggtitle("Percentage of ")+
+  geom_smooth(method = "lm") +
+  labs(caption="Source: ")
+
+
 
 
 ###### Individual Analyses ######
