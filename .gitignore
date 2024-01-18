@@ -127,20 +127,16 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#
 data/allCountries.zip
 data/.DS_Store
 data/geonames/allCountries.zip
 data/derived/.DS_Store
 data/metadata/.DS_Store
 .DS_Store
-.DS_Store
+.ds_store
 
 #AP
 .Rhistory
 data/derived/.Rhistory
-.DS_Store
-.DS_Store
-.DS_Store
-.DS_Store
-.DS_Store
-.DS_Store
