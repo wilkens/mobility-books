@@ -156,22 +156,103 @@ remove_words <- function(text_vector, remove) {
 
 #extract every place name and tabulate
 fic<-c[c$Category == "FIC",]
-fic<-c
 list_of_vectors <- lapply(fic$gpe_sequences, splitElements2)
 place.v<-unlist(list_of_vectors)
 top.v<-names(sort(table(place.v), decreasing = T)[1:5])
 
 #for the most common place extract the next place in sequence
 #i.e. where do you go from New York?
-top.plus1.v<-vector(mode="character", length=length(top.v))
-for (i in 1:length(top.v)){
-  next.v<-place.v[(which(place.v == top.v[i])+1)]
-  top.plus1.v[i]<-paste(names(sort(table(next.v), decreasing = T)[1:5]), collapse = ",")
+find_next_place <- function(list_of_vectors, input_vector) {
+  # Initialize an empty list to store the results
+  output_list <- list()
+  
+  # Loop over each element in the input vector
+  for (input_place in input_vector) {
+    # Initialize a temporary vector to store the next places for the current input place
+    temp_vector <- c()
+    
+    # Loop over each vector in the list
+    for (place_vector in list_of_vectors) {
+      # Find the indices of the input place in the current vector
+      indices <- which(place_vector == input_place)
+      
+      # Loop through each index and get the next place if not the last element
+      for (index in indices) {
+        if (index < length(place_vector)) {
+          next_place <- place_vector[index + 1]
+          # Append the next place to the temporary vector
+          temp_vector <- c(temp_vector, next_place)
+        }
+      }
+    }
+    
+    # Store the temporary vector in the output list
+    output_list[[input_place]] <- temp_vector
+  }
+  
+  return(output_list)
 }
 
-#create data frame
-df<-data.frame(top.v, top.plus1.v)
-colnames(df)<-c("Top Places", "Next Places")
+# Function to get the top five items in descending order
+get_top_five <- function(output_list, n) {
+  # Initialize an empty list to store the results
+  top_five_list <- list()
+  
+  # Loop over each element in the output list
+  for (input_place in names(output_list)) {
+    # Create a frequency table for the current vector
+    freq_table <- table(output_list[[input_place]])
+    
+    # Sort the frequency table in descending order
+    sorted_freq_table <- sort(freq_table, decreasing = TRUE)
+    
+    # Get the top five items
+    top_five <- head(sorted_freq_table, n)
+    
+    # Store the top five items in the output list
+    top_five_list[[input_place]] <- top_five
+  }
+  
+  return(top_five_list)
+}
+
+top_five_to_df <- function(top_five_output) {
+  # Initialize an empty list to store the results
+  df_list <- list()
+  
+  # Loop over each element in the top_five_output list
+  for (input_place in names(top_five_output)) {
+    # Extract the names of the places (excluding the counts)
+    place_names <- names(top_five_output[[input_place]])
+    
+    # Create a data frame row with the input place name and the place names
+    df_row <- data.frame(input_place = input_place, matrix(place_names, nrow = 1))
+    
+    # Append the data frame row to the list
+    df_list <- append(df_list, list(df_row))
+  }
+  
+  # Combine all rows into a single data frame
+  final_df <- bind_rows(df_list)
+  
+  return(final_df)
+}
+#example
+list_of_vectors <- list(
+  c("Paris", "London", "Berlin"),
+  c("Rome", "Madrid", "Paris"),
+  c("Berlin", "Paris", "London")
+)
+input_vector <- c("Paris", "Berlin")
+output <- find_next_place(list_of_vectors, input_vector)
+top_five_output <- get_top_five(output, 5)
+
+#actual 
+input_vector<-top.v
+output <- find_next_place(list_of_vectors, input_vector)
+top_five_output <- get_top_five(output, 10)
+df<-top_five_to_df(top_five_output)
+write.csv(df, file="MostCommonPlacesAndNextHop.csv", row.names = F)
 
 #repeat for nonGPEs
 library(tm)
@@ -181,21 +262,46 @@ stop<-unique(stop)
 
 #extract vector of places
 list_of_vectors <- lapply(fic$nongpe_places_cleaned, splitElements2)
-places<-unlist(list_of_vectors)
-#clean
-places<-tolower(places)
-#remove punctuation
-places<-gsub("[[:punct:]]", "", places)
-#remove stopwords
-places<-remove_words(places, stop)
-#remove white spaces
-places<-gsub("\\s+", " ", places)
-#remove blanks
-places<-places[places != ""]
-#remove dupes in sequence
-places<-rle(places)$values
+
+#cleaning function
+clean_places <- function(vector, stop_words) {
+  # Convert to lower case
+  vector <- tolower(vector)
+  
+  # Remove punctuation
+  vector <- gsub("[[:punct:]]", "", vector)
+  
+  # Remove stopwords
+  vector <- removeWords(vector, stop_words)
+  
+  # Remove white spaces
+  vector <- gsub("\\s+", " ", vector)
+  
+  # Remove blanks
+  vector <- vector[vector != ""]
+  
+  # Trim spaces from beginning and end of each element
+  vector <- trimws(vector)
+  
+  # Remove duplicates in sequence
+  #vector <- rle(vector)$values
+  
+  return(vector)
+}
+
+cleaned_list_of_vectors <- lapply(list_of_vectors, clean_places, stop_words = stop)
+
 #tabulate
-top.non<-names(sort(table(places), decreasing = T)[1:5])
+top.non<-names(sort(table(unlist(cleaned_list_of_vectors)), decreasing = T)[1:5])
+
+#run function
+library(dplyr)
+input_vector<-top.non
+output <- find_next_place(cleaned_list_of_vectors, input_vector)
+top_five_output <- get_top_five(output, 10)
+df<-top_five_to_df(top_five_output)
+write.csv(df, file="MostCommonNONGPEsAndNextHop.csv", row.names = F)
+
 
 #for the most common place extract the next place in sequence
 #i.e. where do you go from New York?
