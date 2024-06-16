@@ -1,8 +1,8 @@
-##########  Mobility Data Analysis   ###########
+##########  Mobility: Data Analysis   ###########
+##########  Andrew Piper    #####################
 
 #read in derived data
 
-setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
 a<-read.csv(gzfile("ALL_CharData_AP_MW_12.csv.gz"))
 c<-a[a$collection == "conlit",]
 

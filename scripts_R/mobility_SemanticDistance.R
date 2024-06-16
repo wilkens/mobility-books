@@ -1,4 +1,6 @@
 ######## Semantic Distance Functions  ##########
+######## Andrew Piper   ########################
+
 #This script calculates "semantic distance" using Glove word embedding
 #for all nonGPE sequences in a collection of books
 #it calculates avg. semantic distance (the mean cosine distance between all sequential pairs)
@@ -7,7 +9,6 @@
 #takes as input the derived data table
 
 #read data
-setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
 c<-read.csv(gzfile("CONLIT_CharData_AP_MW_8.csv.gz"))
 #c<-read.csv(gzfile("EARLY_CharData_AP_MW_7.csv.gz"))
 

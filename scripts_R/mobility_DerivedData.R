@@ -1,14 +1,13 @@
-############ Mobility Derived Data ############
+############ Mobility: Derived Data ############
+############ Andrew Piper  #####################
 library(stringr)
 
 
 #load CONLIT metadata
 meta<-read.csv("CONLIT_META.csv")
-setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/metadata")
 meta<-read.csv("EARLY_META.tsv", sep="\t")
 
 #read/write data
-setwd("/Users/akpiper/Documents/GitHub/mobility-books/data/derived")
 #c<-read.csv(gzfile("CONLIT_CharData_AP_MW_10.csv.gz"))
 c<-read.csv(gzfile("EARLY_CharData_AP_MW_10.csv.gz"))
 
@@ -26,7 +25,6 @@ write.csv(c, file="EARLY_CharData_AP_MW_11.csv", row.names = F)
 system("gzip EARLY_CharData_AP_MW_11.csv") 
 
 ##### calculate measures on extracted data #######
-setwd("/Users/akpiper/Research/Mobility")
 a<-read.csv("book_char_mobility.tsv", sep="\t")
 
 #condtion only on all words
